@@ -1,40 +1,86 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import re
 
 st.set_page_config(
-    page_title="Overview | Legal Analytics",
+    page_title="Overview | Legal Analytics Dashboard",
     layout="wide"
 )
 
-st.title("📊 Legal Analytics Dashboard – Overview")
+st.title("Legal Analytics Dashboard - Overview")
 
 @st.cache_data
 def load_data():
-    base = pd.read_parquet("data/base_for_dashboard.parquet")
-    cases_per_judge = pd.read_parquet("data/total_cases_per_judge.parquet")
-    cases_per_article = pd.read_parquet("data/total_cases_per_article.parquet")
-    return base, cases_per_judge, cases_per_article
+    return pd.read_parquet("data/base_for_dashboard.parquet")
 
-base_df, judge_df, article_df = load_data()
-st.subheader("📌 Dataset Summary")
-col1, col2, col3 = st.columns(3)
+df = load_data()
 
-with col1:
-    st.metric("Total Cases", len(base_df))
+st.sidebar.header("Filters")
 
-with col2:
-    st.metric("Total Judges", base_df["judge_list"].explode().nunique())
+min_year = int(df["year"].min())
+max_year = int(df["year"].max())
 
-with col3:
-    st.metric("Years Covered", f"{base_df['year'].min()} – {base_df['year'].max()}")
-st.subheader("📈 Cases per Year")
+year_range = st.sidebar.slider(
+    "Select Year Range",
+    min_year,
+    max_year,
+    (min_year, max_year)
+)
+
+filtered_df = df[
+    (df["year"] >= year_range[0]) &
+    (df["year"] <= year_range[1])
+]
+
+def extract_judges_from_clean(text):
+    if not isinstance(text, str):
+        return []
+
+    match = re.search(
+        r"Coram\s*:\s*(.*?)(?:Decision Date|Case No|\n|$)",
+        text,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+
+    if not match:
+        return []
+
+    names = []
+    for part in re.split(r",| and ", match.group(1)):
+        part = part.strip()
+        if 6 <= len(part) <= 60:
+            names.append(part.title())
+
+    return names
+
+filtered_df["judges"] = filtered_df["clean_text"].apply(extract_judges_from_clean)
+
+st.subheader("Dataset Summary")
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    st.metric("Total Cases", len(filtered_df))
+
+with c2:
+    st.metric(
+        "Judges Identified",
+        filtered_df.explode("judges")["judges"].nunique()
+    )
+
+with c3:
+    st.metric(
+        "Years Covered",
+        f"{year_range[0]} - {year_range[1]}"
+    )
+
+st.subheader("Cases per Year")
 
 cases_per_year = (
-    base_df.groupby("year")
+    filtered_df.groupby("year")
     .size()
     .reset_index(name="case_count")
-    .sort_values("year")
 )
 
 fig, ax = plt.subplots()
@@ -44,34 +90,29 @@ ax.set_ylabel("Number of Cases")
 
 st.pyplot(fig)
 
-st.subheader("👨‍⚖️ Top Judges by Case Volume")
+st.subheader("Top Judges (Derived from Text)")
 
-top_judges = judge_df.head(15)
-
-fig, ax = plt.subplots()
-ax.barh(top_judges["judge_list"], top_judges["total_cases"])
-ax.invert_yaxis()
-ax.set_xlabel("Number of Cases")
-ax.set_ylabel("Judge")
-
-st.pyplot(fig)
-st.subheader("📜 Most Litigated Constitutional Articles")
-
-top_articles = article_df.head(15)
+top_judges = (
+    filtered_df
+    .explode("judges")
+    .dropna(subset=["judges"])
+    .groupby("judges")
+    .size()
+    .reset_index(name="case_count")
+    .sort_values("case_count", ascending=False)
+    .head(15)
+)
 
 fig, ax = plt.subplots()
-ax.barh(top_articles["article_list"], top_articles["total_cases"])
+ax.barh(top_judges["judges"], top_judges["case_count"])
 ax.invert_yaxis()
 ax.set_xlabel("Number of Cases")
-ax.set_ylabel("Article")
 
 st.pyplot(fig)
-st.subheader("🔎 Sample Cases")
 
-display_cols = ["year", "judge_list", "article_list"]
-available_cols = [c for c in display_cols if c in base_df.columns]
+st.subheader("Sample Cases")
 
 st.dataframe(
-    base_df[available_cols].head(20),
+    filtered_df[["year", "title", "court"]].head(25),
     use_container_width=True
 )
