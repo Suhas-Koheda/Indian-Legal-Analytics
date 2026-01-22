@@ -242,7 +242,7 @@ if clear_button:
 # DATA ATTRIBUTION & PRIVACY
 # ===============================
 st.markdown("---")
-st.markdown("""
+st.markdown(""" 
 ### 🔒 API Key Privacy Notice
 
 **Your API key will be completely secure.** It is stored securely in your browser's session storage and is never transmitted to our servers. It is used only for direct communication with Google's Gemini AI service.
