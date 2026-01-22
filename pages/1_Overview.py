@@ -10,7 +10,7 @@ def load_data():
 
 df = load_data()
 
-col1, col2, col3 = st.columns([2, 1, 1])
+col1, col2 = st.columns([3, 2])
 
 with col1:
     search_term = st.text_input("Search cases", "", key="overview_search")
@@ -26,7 +26,6 @@ with col2:
         key="overview_years"
     )
 
-with col3:
     if selected_years:
         year_range = (min(selected_years), max(selected_years))
     else:
@@ -141,16 +140,39 @@ with col2:
 
 st.subheader("Recent Cases")
 
+recent_cases = filtered_df[
+    ["year", "title", "court", "judge", "citation", "petitioner", "respondent",
+     "decision_date", "disposal_nature", "author_judge", "case_id", "cnr"]
+].sort_values("year", ascending=False).head(15)
+
 st.dataframe(
-    filtered_df[["year", "title", "court", "judge", "citation"]]
-    .sort_values("year", ascending=False)
-    .head(20),
+    recent_cases,
     use_container_width=True,
     column_config={
         "year": st.column_config.NumberColumn("Year", width="small"),
         "title": st.column_config.TextColumn("Case Title", width="large"),
         "court": st.column_config.TextColumn("Court", width="medium"),
-        "judge": st.column_config.ListColumn("Judges", width="medium"),
-        "citation": st.column_config.ListColumn("Citations", width="medium")
+        "judge": st.column_config.ListColumn("Judges", width="small"),
+        "citation": st.column_config.ListColumn("Citations", width="small"),
+        "petitioner": st.column_config.ListColumn("Petitioners", width="small"),
+        "respondent": st.column_config.ListColumn("Respondents", width="small"),
+        "decision_date": st.column_config.TextColumn("Decision Date", width="medium"),
+        "disposal_nature": st.column_config.TextColumn("Disposal Nature", width="medium"),
+        "author_judge": st.column_config.ListColumn("Author Judge", width="small"),
+        "case_id": st.column_config.TextColumn("Case ID", width="small"),
+        "cnr": st.column_config.TextColumn("CNR", width="small")
     }
 )
+
+st.markdown("---")
+st.markdown("### 📚 Data Attribution")
+st.markdown("""
+**Indian Supreme Court Judgments Dataset**
+
+This dashboard uses data from the Indian Supreme Court Judgments dataset, which contains:
+- Supreme Court judgments from 1950 to present
+- Structured metadata and case information
+- Licensed under Creative Commons Attribution 4.0 (CC-BY-4.0)
+
+**Source:** [https://github.com/vanga/indian-supreme-court-judgments](https://github.com/vanga/indian-supreme-court-judgments)
+""")

@@ -10,34 +10,36 @@ def load_data():
 
 df = load_data()
 
-col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+col1, col2 = st.columns([3, 2])
 
 with col1:
     search_term = st.text_input("Search parties", "", key="party_search")
 
 with col2:
-    min_year = int(df["year"].min())
-    max_year = int(df["year"].max())
-    years = list(range(min_year, max_year + 1))
-    selected_years = st.multiselect(
-        "Select Years",
-        years,
-        default=[min_year, max_year],
-        key="party_years"
-    )
+    col_a, col_b = st.columns([3, 2])
 
-with col3:
-    if selected_years:
-        year_range = (min(selected_years), max(selected_years))
-    else:
-        year_range = (min_year, max_year)
+    with col_a:
+        min_year = int(df["year"].min())
+        max_year = int(df["year"].max())
+        years = list(range(min_year, max_year + 1))
+        selected_years = st.multiselect(
+            "Select Years",
+            years,
+            default=[min_year, max_year],
+            key="party_years"
+        )
 
-with col4:
-    analysis_type = st.selectbox(
-        "Analysis Type",
-        ["Petitioners", "Respondents", "Both"],
-        key="party_analysis_type"
-    )
+        if selected_years:
+            year_range = (min(selected_years), max(selected_years))
+        else:
+            year_range = (min_year, max_year)
+
+    with col_b:
+        analysis_type = st.selectbox(
+            "Analysis Type",
+            ["Petitioners", "Respondents", "Both"],
+            key="party_analysis_type"
+        )
 
 if selected_years:
     filtered_df = df[df["year"].isin(selected_years)]
@@ -201,16 +203,21 @@ for _, row in filtered_df.iterrows():
 if party_stats:
     party_df = pd.DataFrame(party_stats)
 
-    st.dataframe(
-        party_df.head(50),
-        use_container_width=True,
-        column_config={
-            "party": st.column_config.TextColumn("Party Name", width="medium"),
-            "role": st.column_config.TextColumn("Role", width="small"),
-            "year": st.column_config.NumberColumn("Year", width="small"),
-            "title": st.column_config.TextColumn("Case Title", width="large")
-        }
-    )
+st.dataframe(
+    filtered_df[["year", "title", "court", "judge", "citation", "petitioner", "respondent", "decision_date", "disposal_nature"]].head(50),
+    use_container_width=True,
+    column_config={
+        "year": st.column_config.NumberColumn("Year", width="small"),
+        "title": st.column_config.TextColumn("Case Title", width="large"),
+        "court": st.column_config.TextColumn("Court", width="medium"),
+        "judge": st.column_config.ListColumn("Judges", width="small"),
+        "citation": st.column_config.ListColumn("Citations", width="small"),
+        "petitioner": st.column_config.ListColumn("Petitioners", width="small"),
+        "respondent": st.column_config.ListColumn("Respondents", width="small"),
+        "decision_date": st.column_config.TextColumn("Decision Date", width="small"),
+        "disposal_nature": st.column_config.TextColumn("Disposal Nature", width="small")
+    }
+)
 
 st.subheader("Party Distribution by Role")
 
@@ -227,3 +234,16 @@ for i, v in enumerate([petitioner_count, respondent_count]):
     ax.text(i, v + 5, str(v), ha='center', va='bottom')
 
 st.pyplot(fig)
+
+st.markdown("---")
+st.markdown("### 📚 Data Attribution")
+st.markdown("""
+**Indian Supreme Court Judgments Dataset**
+
+This dashboard uses data from the Indian Supreme Court Judgments dataset, which contains:
+- Supreme Court judgments from 1950 to present
+- Structured metadata and case information
+- Licensed under Creative Commons Attribution 4.0 (CC-BY-4.0)
+
+**Source:** [https://github.com/vanga/indian-supreme-court-judgments](https://github.com/vanga/indian-supreme-court-judgments)
+""")

@@ -9,7 +9,7 @@ st.set_page_config(
 st.sidebar.title("Navigation")
 page = st.sidebar.radio(
     "Choose a page:",
-    ["Overview", "Judge Analytics", "Case Explorer", "Citation Analytics", "Petitioner/Respondent"],
+    ["Overview", "Judge Analytics", "Case Explorer", "Citation Analytics", "Petitioner/Respondent", "Legal Chatbot"],
     help="Select a page to explore different aspects of the legal analytics dashboard"
 )
 
@@ -23,3 +23,5 @@ elif page == "Citation Analytics":
     exec(open("pages/5_Citations.py").read())
 elif page == "Petitioner/Respondent":
     exec(open("pages/6_Petitioner_Respondent.py").read())
+elif page == "Legal Chatbot":
+    exec(open("pages/7_Chatbot.py").read())

@@ -15,7 +15,7 @@ if "citation" not in df.columns:
     st.error("Citation column not found in dataset.")
     st.stop()
 
-col1, col2, col3 = st.columns([2, 1, 1])
+col1, col2 = st.columns([3, 2])
 
 with col1:
     search_term = st.text_input("Search citations", "", key="citation_search")
@@ -31,7 +31,6 @@ with col2:
         key="citations_years"
     )
 
-with col3:
     if selected_years:
         year_range = (min(selected_years), max(selected_years))
     else:
@@ -118,16 +117,37 @@ st.pyplot(fig)
 st.subheader("Sample Cases")
 
 st.dataframe(
-    citation_df[["year", "title", "court", "citation", "judge", "petitioner", "respondent", "decision_date"]].head(25),
+    citation_df[["year", "title", "court", "citation", "judge", "petitioner", "respondent",
+                "decision_date", "disposal_nature", "author_judge", "case_id", "cnr",
+                "available_languages", "description"]].head(25),
     use_container_width=True,
     column_config={
         "year": st.column_config.NumberColumn("Year", width="small"),
         "title": st.column_config.TextColumn("Case Title", width="large"),
         "court": st.column_config.TextColumn("Court", width="medium"),
-        "citation": st.column_config.ListColumn("Citations", width="medium"),
+        "citation": st.column_config.ListColumn("Citations", width="small"),
         "judge": st.column_config.ListColumn("Judges", width="small"),
-        "petitioner": st.column_config.ListColumn("Petitioners", width="medium"),
-        "respondent": st.column_config.ListColumn("Respondents", width="medium"),
-        "decision_date": st.column_config.TextColumn("Decision Date", width="medium")
+        "petitioner": st.column_config.ListColumn("Petitioners", width="small"),
+        "respondent": st.column_config.ListColumn("Respondents", width="small"),
+        "decision_date": st.column_config.TextColumn("Decision Date", width="small"),
+        "disposal_nature": st.column_config.TextColumn("Disposal Nature", width="small"),
+        "author_judge": st.column_config.ListColumn("Author Judge", width="small"),
+        "case_id": st.column_config.TextColumn("Case ID", width="small"),
+        "cnr": st.column_config.TextColumn("CNR", width="small"),
+        "available_languages": st.column_config.ListColumn("Languages", width="small"),
+        "description": st.column_config.TextColumn("Description", width="medium")
     }
 )
+
+st.markdown("---")
+st.markdown("### 📚 Data Attribution")
+st.markdown("""
+**Indian Supreme Court Judgments Dataset**
+
+This dashboard uses data from the Indian Supreme Court Judgments dataset, which contains:
+- Supreme Court judgments from 1950 to present
+- Structured metadata and case information
+- Licensed under Creative Commons Attribution 4.0 (CC-BY-4.0)
+
+**Source:** [https://github.com/vanga/indian-supreme-court-judgments](https://github.com/vanga/indian-supreme-court-judgments)
+""")

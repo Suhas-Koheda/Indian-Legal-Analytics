@@ -9,34 +9,36 @@ def load_data():
 
 df = load_data()
 
-col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+col1, col2 = st.columns([3, 2])
 
 with col1:
     search_term = st.text_input("Search in case titles", "", key="case_search")
 
 with col2:
-    min_year = int(df["year"].min())
-    max_year = int(df["year"].max())
-    years = list(range(min_year, max_year + 1))
-    selected_years = st.multiselect(
-        "Select Years",
-        years,
-        default=[min_year, max_year],
-        key="case_years"
-    )
+    col_a, col_b = st.columns([3, 2])
 
-with col3:
-    if selected_years:
-        year_range = (min(selected_years), max(selected_years))
-    else:
-        year_range = (min_year, max_year)
+    with col_a:
+        min_year = int(df["year"].min())
+        max_year = int(df["year"].max())
+        years = list(range(min_year, max_year + 1))
+        selected_years = st.multiselect(
+            "Select Years",
+            years,
+            default=[min_year, max_year],
+            key="case_years"
+        )
 
-with col4:
-    sort_by = st.selectbox(
-        "Sort by",
-        ["Year (Newest)", "Year (Oldest)", "Title"],
-        key="case_sort"
-    )
+        if selected_years:
+            year_range = (min(selected_years), max(selected_years))
+        else:
+            year_range = (min_year, max_year)
+
+    with col_b:
+        sort_by = st.selectbox(
+            "Sort by",
+            ["Year (Newest)", "Year (Oldest)", "Title"],
+            key="case_sort"
+        )
 
 if selected_years:
     filtered_df = df[df["year"].isin(selected_years)]
@@ -72,7 +74,9 @@ with col2:
     show_details = st.checkbox("Show case details", value=False, key="case_show_details")
 
 st.dataframe(
-    filtered_df[["year", "title", "court", "judge", "citation", "petitioner", "respondent", "decision_date", "disposal_nature"]].head(display_count),
+    filtered_df[["year", "title", "court", "judge", "citation", "petitioner", "respondent",
+                "decision_date", "disposal_nature", "author_judge", "case_id", "cnr",
+                "available_languages", "description"]].head(display_count),
     use_container_width=True,
     column_config={
         "year": st.column_config.NumberColumn("Year", width="small"),
@@ -80,10 +84,15 @@ st.dataframe(
         "court": st.column_config.TextColumn("Court", width="medium"),
         "judge": st.column_config.ListColumn("Judges", width="small"),
         "citation": st.column_config.ListColumn("Citations", width="small"),
-        "petitioner": st.column_config.ListColumn("Petitioners", width="medium"),
-        "respondent": st.column_config.ListColumn("Respondents", width="medium"),
-        "decision_date": st.column_config.TextColumn("Decision Date", width="medium"),
-        "disposal_nature": st.column_config.TextColumn("Disposal Nature", width="medium")
+        "petitioner": st.column_config.ListColumn("Petitioners", width="small"),
+        "respondent": st.column_config.ListColumn("Respondents", width="small"),
+        "decision_date": st.column_config.TextColumn("Decision Date", width="small"),
+        "disposal_nature": st.column_config.TextColumn("Disposal Nature", width="small"),
+        "author_judge": st.column_config.ListColumn("Author Judge", width="small"),
+        "case_id": st.column_config.TextColumn("Case ID", width="small"),
+        "cnr": st.column_config.TextColumn("CNR", width="small"),
+        "available_languages": st.column_config.ListColumn("Languages", width="small"),
+        "description": st.column_config.TextColumn("Description", width="medium")
     }
 )
 
@@ -150,3 +159,16 @@ with col3:
 with col4:
     avg_judges = filtered_df["judge"].apply(lambda x: len(x) if isinstance(x, list) else 0).mean()
     st.metric("Avg Judges/Case", round(avg_judges, 1))
+
+st.markdown("---")
+st.markdown("### 📚 Data Attribution")
+st.markdown("""
+**Indian Supreme Court Judgments Dataset**
+
+This dashboard uses data from the Indian Supreme Court Judgments dataset, which contains:
+- Supreme Court judgments from 1950 to present
+- Structured metadata and case information
+- Licensed under Creative Commons Attribution 4.0 (CC-BY-4.0)
+
+**Source:** [https://github.com/vanga/indian-supreme-court-judgments](https://github.com/vanga/indian-supreme-court-judgments)
+""")
