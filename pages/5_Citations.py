@@ -104,26 +104,30 @@ trend = (
     .reset_index(name="case_count")
 )
 
-fig, ax = plt.subplots()
-ax.plot(trend["year"], trend["case_count"])
-ax.set_xlabel("Year")
-ax.set_ylabel("Number of Cases")
-ax.set_title(f"Trend for {selected_citation}")
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.plot(trend["year"], trend["case_count"], marker='o', color='purple', linewidth=2, markersize=5)
+ax.fill_between(trend["year"], trend["case_count"], alpha=0.3, color='purple')
+ax.set_xlabel("Year", fontsize=10)
+ax.set_ylabel("Number of Cases", fontsize=10)
+ax.set_title(f"Citation Trend: {selected_citation}", fontsize=12, fontweight='bold')
+ax.grid(True, alpha=0.3)
+ax.tick_params(axis='both', which='major', labelsize=9)
 
 st.pyplot(fig)
 
 st.subheader("Sample Cases")
 
-display_cols = [
-    "year",
-    "title",
-    "court",
-    "citation"
-]
-
-available_cols = [c for c in display_cols if c in citation_df.columns]
-
 st.dataframe(
-    citation_df[available_cols].head(25),
-    use_container_width=True
+    citation_df[["year", "title", "court", "citation", "judge", "petitioner", "respondent", "decision_date"]].head(25),
+    use_container_width=True,
+    column_config={
+        "year": st.column_config.NumberColumn("Year", width="small"),
+        "title": st.column_config.TextColumn("Case Title", width="large"),
+        "court": st.column_config.TextColumn("Court", width="medium"),
+        "citation": st.column_config.ListColumn("Citations", width="medium"),
+        "judge": st.column_config.ListColumn("Judges", width="small"),
+        "petitioner": st.column_config.ListColumn("Petitioners", width="medium"),
+        "respondent": st.column_config.ListColumn("Respondents", width="medium"),
+        "decision_date": st.column_config.TextColumn("Decision Date", width="medium")
+    }
 )
