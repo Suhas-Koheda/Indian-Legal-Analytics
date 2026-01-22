@@ -1,12 +1,69 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import altair as alt
 
 st.title("Dashboard Overview")
 
-@st.cache_data
+@st.cache_data(ttl=1800)  # Cache for 30 minutes
 def load_data():
     return pd.read_parquet("data/base_for_dashboard.parquet")
+
+@st.cache_data(ttl=900)  # Cache for 15 minutes
+def compute_overview_stats(df, selected_years):
+    """Compute overview statistics with caching"""
+    if selected_years:
+        filtered_df = df[df["year"].isin(selected_years)]
+    else:
+        filtered_df = df
+
+    return {
+        "total_cases": len(filtered_df),
+        "year_range": f"{min(selected_years) if selected_years else int(df['year'].min())}-{max(selected_years) if selected_years else int(df['year'].max())}",
+        "unique_judges": filtered_df.explode("judge")["judge"].nunique(),
+        "unique_citations": filtered_df.explode("citation")["citation"].nunique(),
+        "avg_cases_per_year": len(filtered_df) / max(1, len(selected_years) if selected_years else (int(df['year'].max()) - int(df['year'].min()) + 1))
+    }
+
+@st.cache_data(ttl=600)  # Cache for 10 minutes
+def compute_case_trends(df, selected_years):
+    """Compute case volume trends with caching"""
+    if selected_years:
+        filtered_df = df[df["year"].isin(selected_years)]
+    else:
+        filtered_df = df
+
+    return (
+        filtered_df.groupby("year")
+        .size()
+        .reset_index(name="case_count")
+        .sort_values("year")
+    )
+
+@st.cache_data(ttl=600)  # Cache for 10 minutes
+def compute_top_judges_with_years(df, selected_years):
+    """Compute top judges with career year information"""
+    if selected_years:
+        filtered_df = df[df["year"].isin(selected_years)]
+    else:
+        filtered_df = df
+
+    judge_stats = (
+        filtered_df
+        .explode("judge")
+        .dropna(subset=["judge"])
+        .groupby("judge")
+        .agg({
+            "year": ["min", "max", "count"]
+        })
+        .reset_index()
+    )
+
+    judge_stats.columns = ["judge", "first_year", "last_year", "case_count"]
+    judge_stats["year_range"] = judge_stats["first_year"].astype(str) + "-" + judge_stats["last_year"].astype(str)
+    judge_stats = judge_stats.sort_values("case_count", ascending=False).head(10)
+
+    return judge_stats
 
 df = load_data()
 
@@ -41,87 +98,85 @@ if search_term:
         filtered_df["title"].str.contains(search_term, case=False, na=False)
     ]
 
-st.subheader("Dataset Summary")
+st.subheader("📊 Dataset Summary")
 
-c1, c2, c3, c4, c5 = st.columns(5)
+cols = st.columns(5, gap="small")
 
-with c1:
-    st.metric("Total Cases", len(filtered_df))
+with cols[0].container(border=True):
+    st.metric("📄 Total Cases", f"{len(filtered_df):,}")
 
-with c2:
-    st.metric("Years Covered", f"{year_range[0]}-{year_range[1]}")
+with cols[1].container(border=True):
+    st.metric("📅 Years Covered", f"{year_range[0]}-{year_range[1]}")
 
-with c3:
-    st.metric("Judges", filtered_df.explode("judge")["judge"].nunique())
+with cols[2].container(border=True):
+    st.metric("⚖️ Judges", f"{filtered_df.explode('judge')['judge'].nunique():,}")
 
-with c4:
-    st.metric("Citations", filtered_df.explode("citation")["citation"].nunique())
+with cols[3].container(border=True):
+    st.metric("📜 Citations", f"{filtered_df.explode('citation')['citation'].nunique():,}")
 
-with c5:
+with cols[4].container(border=True):
     avg_cases = len(filtered_df) / max(1, year_range[1] - year_range[0] + 1)
-    st.metric("Avg Cases/Year", round(avg_cases, 1))
+    st.metric("📈 Avg Cases/Year", round(avg_cases, 1))
 
-st.subheader("Case Volume Trends")
+st.subheader("📈 Case Volume Trends")
 
-cases_per_year = (
-    filtered_df.groupby("year")
-    .size()
-    .reset_index(name="case_count")
-    .sort_values("year")
+cases_per_year = compute_case_trends(df, selected_years)
+
+chart = alt.Chart(cases_per_year).mark_bar(color='#FF6B35', opacity=0.8).encode(
+    x=alt.X('year:O', title='Year'),
+    y=alt.Y('case_count:Q', title='Number of Cases'),
+    tooltip=['year', 'case_count']
+).properties(
+    title='Annual Case Volume Trends',
+    height=300
+).configure_axis(
+    labelFontSize=11,
+    titleFontSize=12,
+    titleFontWeight='bold'
+).configure_title(
+    fontSize=14,
+    fontWeight='bold'
 )
 
-fig, ax = plt.subplots(figsize=(8, 4))
-bars = ax.bar(cases_per_year["year"], cases_per_year["case_count"], alpha=0.7, color='skyblue')
-ax.plot(cases_per_year["year"], cases_per_year["case_count"], marker='o', color='red', linewidth=2)
+st.altair_chart(chart, use_container_width=True)
 
-ax.set_xlabel("Year")
-ax.set_ylabel("Number of Cases")
-ax.set_title("Annual Case Volume")
-ax.grid(True, alpha=0.3)
+cols = st.columns(2, gap="medium")
 
-st.pyplot(fig)
+with cols[0].container(border=True, height=400):
+    st.subheader("👨‍⚖️ Top Judges by Case Volume")
 
-col1, col2 = st.columns(2)
+    judge_stats = compute_top_judges_with_years(df, selected_years)
+    judge_data = pd.DataFrame({
+        'judge': judge_stats["judge"],
+        'case_count': judge_stats["case_count"],
+        'year_range': judge_stats["year_range"]
+    })
 
-with col1:
-    st.subheader("Top Judges by Case Volume")
-
-    judge_stats = (
-        filtered_df
-        .explode("judge")
-        .dropna(subset=["judge"])
-        .groupby("judge")
-        .agg({
-            "year": ["min", "max", "count"]
-        })
-        .reset_index()
+    judge_chart = alt.Chart(judge_data.head(10)).mark_bar(color='#FF6B35', opacity=0.9).encode(
+        y=alt.Y('judge:N', sort='-x', title='Judge'),
+        x=alt.X('case_count:Q', title='Number of Cases'),
+        tooltip=['judge', 'case_count', 'year_range']
+    ).properties(
+        title='Most Active Judges (with Career Years)',
+        height=300
+    ).configure_axis(
+        labelFontSize=10,
+        titleFontSize=11,
+        titleFontWeight='bold'
+    ).configure_title(
+        fontSize=12,
+        fontWeight='bold'
     )
 
-    judge_stats.columns = ["judge", "first_year", "last_year", "case_count"]
-    judge_stats["year_range"] = judge_stats["first_year"].astype(str) + "-" + judge_stats["last_year"].astype(str)
-    judge_stats = judge_stats.sort_values("case_count", ascending=False).head(10)
+    st.altair_chart(judge_chart, use_container_width=True)
 
-    judge_labels = [f"{judge}\n({years})" for judge, years in zip(judge_stats["judge"], judge_stats["year_range"])]
+with cols[1].container(border=True, height=400):
+    st.subheader("📜 Most Cited Legal References")
 
-    fig, ax = plt.subplots(figsize=(6, 5))
-    bars = ax.barh(judge_labels, judge_stats["case_count"], color='lightcoral', alpha=0.8)
-    ax.invert_yaxis()
-    ax.set_xlabel("Number of Cases")
-    ax.set_title("Most Active Judges (with Career Years)", fontsize=12, fontweight='bold')
-    ax.grid(axis='x', alpha=0.3)
-
-    for bar, count in zip(bars, judge_stats["case_count"]):
-        ax.text(count + 0.5, bar.get_y() + bar.get_height()/2, str(count),
-                ha='left', va='center', fontsize=9, fontweight='bold')
-
-    st.pyplot(fig)
-
-with col2:
-    st.subheader("Most Cited Legal References")
+    filtered_df = df[df["year"].isin(selected_years)] if selected_years else df
 
     top_citations = (
-        filtered_df
-        .explode("citation")
+        filtered_df.explode("citation")
         .dropna(subset=["citation"])
         .groupby("citation")
         .size()
@@ -129,14 +184,28 @@ with col2:
         .sort_values("case_count", ascending=False)
         .head(10)
     )
+    citation_data = pd.DataFrame({
+        'citation': top_citations["citation"],
+        'case_count': top_citations["case_count"]
+    })
 
-    fig, ax = plt.subplots(figsize=(5, 4))
-    bars = ax.barh(top_citations["citation"], top_citations["case_count"], color='lightgreen')
-    ax.invert_yaxis()
-    ax.set_xlabel("Number of Cases")
-    ax.set_title("Most Cited Legal References")
+    citation_chart = alt.Chart(citation_data).mark_bar(color='#4CAF50', opacity=0.9).encode(
+        y=alt.Y('citation:N', sort='-x', title='Citation'),
+        x=alt.X('case_count:Q', title='Number of Cases'),
+        tooltip=['citation', 'case_count']
+    ).properties(
+        title='Most Cited Legal References',
+        height=300
+    ).configure_axis(
+        labelFontSize=10,
+        titleFontSize=11,
+        titleFontWeight='bold'
+    ).configure_title(
+        fontSize=12,
+        fontWeight='bold'
+    )
 
-    st.pyplot(fig)
+    st.altair_chart(citation_chart, use_container_width=True)
 
 st.subheader("Recent Cases")
 

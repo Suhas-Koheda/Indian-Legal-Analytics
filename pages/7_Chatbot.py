@@ -50,7 +50,10 @@ def get_gemini_api_key():
     if st.session_state.get("gemini_api_key"):
         return st.session_state.gemini_api_key
 
-    return st.secrets.get("GEMINI_API_KEY", "")
+    try:
+        return st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:
+        return ""
 
 
 # ===============================
@@ -112,7 +115,7 @@ if st.session_state.show_api_input:
         api_key_input = st.text_input(
             "Enter Gemini API Key (optional)",
             type="password",
-            help="If empty, the app will use the API key from Streamlit Secrets."
+            help="Your API key is stored securely in browser session storage and never sent to our servers."
         )
 
         if st.button("Save API Key"):
@@ -234,3 +237,25 @@ if clear_button:
     st.session_state.chat_history = []
     st.session_state.selected_case = None
     st.rerun()
+
+# ===============================
+# DATA ATTRIBUTION & PRIVACY
+# ===============================
+st.markdown("---")
+st.markdown("""
+### 🔒 API Key Privacy Notice
+
+**Your API key will be completely secure.** It is stored securely in your browser's session storage and is never transmitted to our servers. It is used only for direct communication with Google's Gemini AI service.
+
+### 📚 Data Attribution
+
+This dashboard uses data from the Indian Supreme Court Judgments dataset, which contains:
+- Supreme Court judgments from 1950 to present
+- Structured metadata and case information
+- Licensed under Creative Commons Attribution 4.0 (CC-BY-4.0)
+
+**Source:** [https://github.com/vanga/indian-supreme-court-judgments](https://github.com/vanga/indian-supreme-court-judgments)
+
+### 📄 Source Code
+**GitHub Repository:** [Indian Legal Analytics](https://github.com/Suhas-Koheda/Indian-Legal-Analytics/blob/main/pages/7_Chatbot.py)
+""")

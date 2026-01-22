@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import altair as alt
 
 st.title("Petitioner vs Respondent Analytics")
 
@@ -120,10 +121,10 @@ if analysis_type in ["Respondents", "Both"]:
     st.pyplot(fig)
 
 if analysis_type == "Both":
-    col1, col2 = st.columns(2)
+    cols = st.columns(2, gap="medium")
 
-    with col1:
-        st.subheader("Petitioners by Year")
+    with cols[0].container(border=True, height=350):
+        st.subheader("🗣️ Top Petitioners by Year")
 
         petitioner_trends = (
             filtered_df
@@ -134,23 +135,23 @@ if analysis_type == "Both":
             .reset_index(name="count")
             .sort_values(["year", "count"], ascending=[True, False])
             .groupby("year")
-            .head(1)
+            .head(3)
         )
 
-        fig, ax = plt.subplots(figsize=(6, 4))
-        for petitioner in petitioner_trends["petitioner"].unique()[:5]:
-            data = petitioner_trends[petitioner_trends["petitioner"] == petitioner]
-            ax.plot(data["year"], data["count"], marker='o', label=petitioner[:20])
+        petitioner_chart = alt.Chart(petitioner_trends.head(50)).mark_line(point=True).encode(
+            x=alt.X('year:O', title='Year'),
+            y=alt.Y('count:Q', title='Cases'),
+            color=alt.Color('petitioner:N', title='Petitioner'),
+            tooltip=['year', 'petitioner', 'count']
+        ).properties(
+            title='Top Petitioner Trends Over Time',
+            height=280
+        )
 
-        ax.set_xlabel("Year")
-        ax.set_ylabel("Cases")
-        ax.set_title("Top Petitioner Trends")
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        st.altair_chart(petitioner_chart, use_container_width=True)
 
-        st.pyplot(fig)
-
-    with col2:
-        st.subheader("Respondents by Year")
+    with cols[1].container(border=True, height=350):
+        st.subheader("🛡️ Top Respondents by Year")
 
         respondent_trends = (
             filtered_df
@@ -161,20 +162,20 @@ if analysis_type == "Both":
             .reset_index(name="count")
             .sort_values(["year", "count"], ascending=[True, False])
             .groupby("year")
-            .head(1)
+            .head(3)
         )
 
-        fig, ax = plt.subplots(figsize=(6, 4))
-        for respondent in respondent_trends["respondent"].unique()[:5]:
-            data = respondent_trends[respondent_trends["respondent"] == respondent]
-            ax.plot(data["year"], data["count"], marker='s', label=respondent[:20])
+        respondent_chart = alt.Chart(respondent_trends.head(50)).mark_line(point=True).encode(
+            x=alt.X('year:O', title='Year'),
+            y=alt.Y('count:Q', title='Cases'),
+            color=alt.Color('respondent:N', title='Respondent'),
+            tooltip=['year', 'respondent', 'count']
+        ).properties(
+            title='Top Respondent Trends Over Time',
+            height=280
+        )
 
-        ax.set_xlabel("Year")
-        ax.set_ylabel("Cases")
-        ax.set_title("Top Respondent Trends")
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-
-        st.pyplot(fig)
+        st.altair_chart(respondent_chart, use_container_width=True)
 
 st.subheader("Detailed Party Analysis")
 
@@ -219,21 +220,35 @@ st.dataframe(
     }
 )
 
-st.subheader("Party Distribution by Role")
+st.subheader("⚖️ Party Distribution by Role")
 
-role_counts = []
 petitioner_count = sum(filtered_df["petitioner"].apply(lambda x: len(x) if isinstance(x, list) else 0))
 respondent_count = sum(filtered_df["respondent"].apply(lambda x: len(x) if isinstance(x, list) else 0))
 
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.bar(["Petitioners", "Respondents"], [petitioner_count, respondent_count], color=['lightblue', 'lightcoral'])
-ax.set_ylabel("Total Party Mentions")
-ax.set_title("Petitioner vs Respondent Distribution")
+party_data = pd.DataFrame({
+    'role': ['Petitioners', 'Respondents'],
+    'count': [petitioner_count, respondent_count]
+})
 
-for i, v in enumerate([petitioner_count, respondent_count]):
-    ax.text(i, v + 5, str(v), ha='center', va='bottom')
+party_chart = alt.Chart(party_data).mark_bar(size=60).encode(
+    x=alt.X('role:N', title='Role'),
+    y=alt.Y('count:Q', title='Total Party Mentions'),
+    color=alt.Color('role:N', scale=alt.Scale(domain=['Petitioners', 'Respondents'],
+                                             range=['#2196F3', '#F44336'])),
+    tooltip=['role', 'count']
+).properties(
+    title='Petitioner vs Respondent Distribution',
+    height=300
+).configure_axis(
+    labelFontSize=11,
+    titleFontSize=12,
+    titleFontWeight='bold'
+).configure_title(
+    fontSize=14,
+    fontWeight='bold'
+)
 
-st.pyplot(fig)
+st.altair_chart(party_chart, use_container_width=True)
 
 st.markdown("---")
 st.markdown("### 📚 Data Attribution")

@@ -1,12 +1,58 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import altair as alt
 
 st.title("Judge Analytics")
 
 @st.cache_data
 def load_data():
     return pd.read_parquet("data/base_for_dashboard.parquet")
+
+@st.cache_data(ttl=900)  # Cache for 15 minutes
+def compute_judge_stats(df, selected_years):
+    """Compute judge statistics with caching"""
+    if selected_years:
+        filtered_df = df[df["year"].isin(selected_years)]
+    else:
+        filtered_df = df
+
+    judge_stats = (
+        filtered_df
+        .explode("judge")
+        .dropna(subset=["judge"])
+        .groupby("judge")
+        .agg({
+            "year": ["min", "max", "count"],
+            "court": lambda x: len(x.unique()) if len(x) > 0 else 0
+        })
+        .reset_index()
+    )
+
+    judge_stats.columns = ["judge", "first_year", "last_year", "total_cases", "courts_served"]
+    judge_stats["avg_cases_per_year"] = judge_stats["total_cases"] / (judge_stats["last_year"] - judge_stats["first_year"] + 1)
+    judge_stats = judge_stats.sort_values("total_cases", ascending=False)
+
+    return judge_stats
+
+@st.cache_data(ttl=600)  # Cache for 10 minutes
+def compute_judge_year_trends(df, selected_years, selected_judge):
+    """Compute year-wise trends for a specific judge"""
+    if selected_years:
+        filtered_df = df[df["year"].isin(selected_years)]
+    else:
+        filtered_df = df
+
+    judge_cases = filtered_df[
+        filtered_df["judge"].apply(lambda x: selected_judge in x if isinstance(x, list) else False)
+    ]
+
+    return (
+        judge_cases.groupby("year")
+        .size()
+        .reset_index(name="case_count")
+        .sort_values("year")
+    )
 
 df = load_data()
 
@@ -92,41 +138,40 @@ judge_df = filtered_df[
     filtered_df["judge"].apply(lambda lst: selected_judge in lst)
 ]
 
-st.subheader(f"Justice {selected_judge}")
+st.subheader(f"⚖️ Justice {selected_judge}")
 
-c1, c2, c3, c4 = st.columns(4)
+cols = st.columns(3, gap="small")
 
-with c1:
-    st.metric("Total Cases", int(judge_data["total_cases"]))
+with cols[0].container(border=True):
+    st.metric("📄 Total Cases", f"{int(judge_data['total_cases'])}")
 
-with c2:
-    st.metric("Years Active", int(judge_data["years_active"]))
+with cols[1].container(border=True):
+    st.metric("📅 Years Active", f"{int(judge_data['last_year'] - judge_data['first_year'] + 1)}")
 
-with c3:
-    st.metric("Avg Cases/Year", round(judge_data["avg_cases_per_year"], 1))
+with cols[2].container(border=True):
+    st.metric("📈 Avg Cases/Year", round(judge_data['avg_cases_per_year'], 1))
 
-with c4:
-    st.metric("Career Span", f"{int(judge_data['first_year'])}-{int(judge_data['last_year'])}")
+st.subheader("📈 Year-wise Case Load")
 
-st.subheader("Year-wise Case Load")
+cases_per_year = compute_judge_year_trends(df, selected_years, selected_judge)
 
-cases_per_year = (
-    judge_df.groupby("year")
-    .size()
-    .reset_index(name="case_count")
-    .sort_values("year")
+chart = alt.Chart(cases_per_year).mark_bar(color='#FF6B35', opacity=0.8).encode(
+    x=alt.X('year:O', title='Year'),
+    y=alt.Y('case_count:Q', title='Number of Cases'),
+    tooltip=['year', 'case_count']
+).properties(
+    title=f'Cases handled by {selected_judge}',
+    height=300
+).configure_axis(
+    labelFontSize=11,
+    titleFontSize=12,
+    titleFontWeight='bold'
+).configure_title(
+    fontSize=14,
+    fontWeight='bold'
 )
 
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.bar(cases_per_year["year"], cases_per_year["case_count"], alpha=0.8, color='skyblue', edgecolor='navy', linewidth=0.5)
-ax.plot(cases_per_year["year"], cases_per_year["case_count"], marker='o', color='red', linewidth=2, markersize=4)
-ax.set_xlabel("Year", fontsize=10)
-ax.set_ylabel("Number of Cases", fontsize=10)
-ax.set_title(f"Cases handled by {selected_judge}", fontsize=12, fontweight='bold')
-ax.grid(True, alpha=0.3)
-ax.tick_params(axis='both', which='major', labelsize=9)
-
-st.pyplot(fig)
+st.altair_chart(chart, use_container_width=True)
 
 st.subheader("Cases Handled by This Judge")
 

@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import altair as alt
 import re
 
 st.title("Citation Analytics")
@@ -73,16 +74,28 @@ top_citations = (
     .head(20)
 )
 
-fig, ax = plt.subplots(figsize=(6, 6))
-ax.barh(top_citations["citation"], top_citations["case_count"], alpha=0.8, color='lightgreen', edgecolor='darkgreen', linewidth=0.5)
-ax.invert_yaxis()
-ax.set_xlabel("Number of Cases", fontsize=10)
-ax.set_ylabel("Citation", fontsize=10)
-ax.set_title("Most Frequent Citations", fontsize=12, fontweight='bold')
-ax.grid(axis='x', alpha=0.3)
-ax.tick_params(axis='both', which='major', labelsize=9)
+citation_data = pd.DataFrame({
+    'citation': top_citations["citation"],
+    'case_count': top_citations["case_count"]
+})
 
-st.pyplot(fig)
+chart = alt.Chart(citation_data).mark_bar(color='#4CAF50', opacity=0.9).encode(
+    y=alt.Y('citation:N', sort='-x', title='Citation'),
+    x=alt.X('case_count:Q', title='Number of Cases'),
+    tooltip=['citation', 'case_count']
+).properties(
+    title='Most Frequent Citations',
+    height=400
+).configure_axis(
+    labelFontSize=10,
+    titleFontSize=11,
+    titleFontWeight='bold'
+).configure_title(
+    fontSize=14,
+    fontWeight='bold'
+)
+
+st.altair_chart(chart, use_container_width=True)
 
 st.subheader("Citation Trends Over Time")
 
@@ -103,16 +116,23 @@ trend = (
     .reset_index(name="case_count")
 )
 
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.plot(trend["year"], trend["case_count"], marker='o', color='purple', linewidth=2, markersize=5)
-ax.fill_between(trend["year"], trend["case_count"], alpha=0.3, color='purple')
-ax.set_xlabel("Year", fontsize=10)
-ax.set_ylabel("Number of Cases", fontsize=10)
-ax.set_title(f"Citation Trend: {selected_citation}", fontsize=12, fontweight='bold')
-ax.grid(True, alpha=0.3)
-ax.tick_params(axis='both', which='major', labelsize=9)
+trend_chart = alt.Chart(trend).mark_line(point=True, color='#9C27B0', size=3).encode(
+    x=alt.X('year:O', title='Year'),
+    y=alt.Y('case_count:Q', title='Number of Cases'),
+    tooltip=['year', 'case_count']
+).properties(
+    title=f'Citation Trend: {selected_citation}',
+    height=300
+).configure_axis(
+    labelFontSize=10,
+    titleFontSize=11,
+    titleFontWeight='bold'
+).configure_title(
+    fontSize=14,
+    fontWeight='bold'
+)
 
-st.pyplot(fig)
+st.altair_chart(trend_chart, use_container_width=True)
 
 st.subheader("Sample Cases")
 
