@@ -1,11 +1,6 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(
-    page_title="Case Explorer | Legal Analytics Dashboard",
-    layout="wide"
-)
-
 st.title("Case Explorer")
 
 @st.cache_data
@@ -14,85 +9,140 @@ def load_data():
 
 df = load_data()
 
-st.sidebar.header("Filters")
+col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
-min_year = int(df["year"].min())
-max_year = int(df["year"].max())
+with col1:
+    search_term = st.text_input("Search in case titles", "", key="case_search")
 
-year_range = st.sidebar.slider(
-    "Select Year Range",
-    min_year,
-    max_year,
-    (min_year, max_year)
-)
+with col2:
+    min_year = int(df["year"].min())
+    max_year = int(df["year"].max())
+    years = list(range(min_year, max_year + 1))
+    selected_years = st.multiselect(
+        "Select Years",
+        years,
+        default=[min_year, max_year],
+        key="case_years"
+    )
 
-filtered_df = df[
-    (df["year"] >= year_range[0]) &
-    (df["year"] <= year_range[1])
-]
+with col3:
+    if selected_years:
+        year_range = (min(selected_years), max(selected_years))
+    else:
+        year_range = (min_year, max_year)
 
-search_term = st.sidebar.text_input("Search in case titles", "")
+with col4:
+    sort_by = st.selectbox(
+        "Sort by",
+        ["Year (Newest)", "Year (Oldest)", "Title"],
+        key="case_sort"
+    )
+
+if selected_years:
+    filtered_df = df[df["year"].isin(selected_years)]
+else:
+    filtered_df = df
 
 if search_term:
     filtered_df = filtered_df[
         filtered_df["title"].str.contains(search_term, case=False, na=False)
     ]
 
+if sort_by == "Year (Newest)":
+    filtered_df = filtered_df.sort_values("year", ascending=False)
+elif sort_by == "Year (Oldest)":
+    filtered_df = filtered_df.sort_values("year", ascending=True)
+elif sort_by == "Title":
+    filtered_df = filtered_df.sort_values("title")
+
 st.subheader("Case Search Results")
 
 if len(filtered_df) == 0:
     st.warning("No cases found matching your criteria.")
-else:
-    st.write(f"Found {len(filtered_df)} cases")
+    st.stop()
 
-    display_cols = ["year", "title", "court"]
-    available_cols = [c for c in display_cols if c in filtered_df.columns]
+st.write(f"Found {len(filtered_df)} cases")
 
-    st.dataframe(
-        filtered_df[available_cols].head(50),
-        use_container_width=True
-    )
+col1, col2 = st.columns([2, 1])
 
+with col1:
+    display_count = st.slider("Cases to display", 10, 100, 25, key="case_display_count")
+
+with col2:
+    show_details = st.checkbox("Show case details", value=False, key="case_show_details")
+
+st.dataframe(
+    filtered_df[["year", "title", "court", "judge", "citation"]].head(display_count),
+    use_container_width=True,
+    column_config={
+        "year": st.column_config.NumberColumn("Year", width="small"),
+        "title": st.column_config.TextColumn("Case Title", width="large"),
+        "court": st.column_config.TextColumn("Court", width="medium"),
+        "judge": st.column_config.ListColumn("Judges", width="medium"),
+        "citation": st.column_config.ListColumn("Citations", width="medium")
+    }
+)
+
+if show_details and len(filtered_df) > 0:
     st.subheader("Case Details")
 
-    if len(filtered_df) > 0:
-        case_options = [f"{row['year']} - {row['title'][:100]}..." for _, row in filtered_df.head(100).iterrows()]
+    case_options = [f"{row['year']} - {row['title'][:80]}..." for _, row in filtered_df.head(min(50, len(filtered_df))).iterrows()]
 
-        selected_case = st.selectbox(
-            "Select a case to view details",
-            case_options
-        )
+    selected_case = st.selectbox(
+        "Select a case to view details",
+        case_options,
+        key="case_detail_select"
+    )
 
-        if selected_case:
-            case_index = case_options.index(selected_case)
-            case_data = filtered_df.iloc[case_index]
+    if selected_case:
+        case_index = case_options.index(selected_case)
+        case_data = filtered_df.iloc[case_index]
 
-            col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-            with col1:
-                st.write("**Case Information:**")
-                st.write(f"**Year:** {case_data.get('year', 'N/A')}")
-                st.write(f"**Title:** {case_data.get('title', 'N/A')}")
-                st.write(f"**Court:** {case_data.get('court', 'N/A')}")
+        with col1:
+            st.write("### Case Information")
+            st.write(f"**Year:** {case_data.get('year', 'N/A')}")
+            st.write(f"**Title:** {case_data.get('title', 'N/A')}")
+            st.write(f"**Court:** {case_data.get('court', 'N/A')}")
 
-            with col2:
-                st.write("**Judges:**")
-                judges = case_data.get('judge', [])
-                if isinstance(judges, list) and judges:
-                    for judge in judges:
-                        st.write(f"- {judge}")
-                else:
-                    st.write("No judges listed")
+        with col2:
+            st.write("### Judges")
+            judges = case_data.get('judge', [])
+            if isinstance(judges, list) and judges:
+                for judge in judges:
+                    st.write(f"• {judge}")
+            else:
+                st.write("No judges listed")
 
-                st.write("**Legal Provisions:**")
-                provisions = case_data.get('legal_provisions', [])
-                if isinstance(provisions, list) and provisions:
-                    for provision in provisions:
-                        st.write(f"- {provision}")
-                else:
-                    st.write("No legal provisions listed")
+            st.write("### Citations")
+            citations = case_data.get('citation', [])
+            if isinstance(citations, list) and citations:
+                for citation in citations:
+                    st.write(f"• {citation}")
+            else:
+                st.write("No citations listed")
 
-            if 'clean_text' in case_data and case_data['clean_text']:
-                st.subheader("Case Summary")
-                summary = case_data['clean_text'][:1000] + "..." if len(str(case_data['clean_text'])) > 1000 else case_data['clean_text']
-                st.write(summary)
+        if 'clean_text' in case_data and case_data['clean_text']:
+            st.subheader("Case Summary")
+            with st.expander("Show full case text"):
+                st.write(case_data['clean_text'])
+
+st.subheader("Quick Statistics")
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric("Total Cases", len(filtered_df))
+
+with col2:
+    unique_judges = filtered_df.explode("judge")["judge"].nunique()
+    st.metric("Unique Judges", unique_judges)
+
+with col3:
+    unique_citations = filtered_df.explode("citation")["citation"].nunique()
+    st.metric("Unique Citations", unique_citations)
+
+with col4:
+    avg_judges = filtered_df["judge"].apply(lambda x: len(x) if isinstance(x, list) else 0).mean()
+    st.metric("Avg Judges/Case", round(avg_judges, 1))

@@ -30,6 +30,41 @@ def normalize_citations(citation_value):
 
     parts = re.split(r",|;", str(citation_value))
     return [p.strip() for p in parts if len(p.strip()) > 3]
+
+def extract_petitioner_respondent(title):
+    if pd.isna(title) or not title:
+        return [], []
+
+    title = str(title).strip()
+
+    petitioners = []
+    respondents = []
+
+    patterns = [
+        r"(.+?)\s+vs\.?\s+(.+)",
+        r"(.+?)\s+versus\s+(.+)",
+        r"(.+?)\s+v\.\s+(.+)",
+        r"(.+?)\s+&\s+(.+?)\s+vs\.?\s+(.+)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, title, re.IGNORECASE)
+        if match:
+            petitioner_part = match.group(1).strip()
+            respondent_part = match.group(-1).strip() if len(match.groups()) == 2 else match.group(2).strip()
+
+            petitioner_part = re.sub(r'^[^\w]+|[^\w]+$', '', petitioner_part)
+            respondent_part = re.sub(r'^[^\w]+|[^\w]+$', '', respondent_part)
+
+            if petitioner_part and len(petitioner_part) > 2:
+                petitioners.append(petitioner_part.title())
+
+            if respondent_part and len(respondent_part) > 2:
+                respondents.append(respondent_part.title())
+
+            break
+
+    return petitioners, respondents
 def combine_parquets():
     dfs = []
 
@@ -55,6 +90,14 @@ def combine_parquets():
             df["citation"] = df["citation"].apply(normalize_citations)
         else:
             df["citation"] = [[]] * len(df)
+
+        if "title" in df.columns:
+            df[["petitioner", "respondent"]] = df["title"].apply(
+                lambda x: pd.Series(extract_petitioner_respondent(x))
+            )
+        else:
+            df["petitioner"] = [[]] * len(df)
+            df["respondent"] = [[]] * len(df)
 
         dfs.append(df)
 

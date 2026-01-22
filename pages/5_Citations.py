@@ -3,11 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import re
 
-st.set_page_config(
-    page_title="Citation Analytics | Legal Analytics Dashboard",
-    layout="wide"
-)
-
 st.title("Citation Analytics")
 
 @st.cache_data
@@ -20,22 +15,32 @@ if "citation" not in df.columns:
     st.error("Citation column not found in dataset.")
     st.stop()
 
-st.sidebar.header("Filters")
+col1, col2, col3 = st.columns([2, 1, 1])
 
-min_year = int(df["year"].min())
-max_year = int(df["year"].max())
+with col1:
+    search_term = st.text_input("Search citations", "", key="citation_search")
 
-year_range = st.sidebar.slider(
-    "Select Year Range",
-    min_year,
-    max_year,
-    (min_year, max_year)
-)
+with col2:
+    min_year = int(df["year"].min())
+    max_year = int(df["year"].max())
+    years = list(range(min_year, max_year + 1))
+    selected_years = st.multiselect(
+        "Select Years",
+        years,
+        default=[min_year, max_year],
+        key="citations_years"
+    )
 
-filtered_df = df[
-    (df["year"] >= year_range[0]) &
-    (df["year"] <= year_range[1])
-]
+with col3:
+    if selected_years:
+        year_range = (min(selected_years), max(selected_years))
+    else:
+        year_range = (min_year, max_year)
+
+if selected_years:
+    filtered_df = df[df["year"].isin(selected_years)]
+else:
+    filtered_df = df
 
 st.subheader("Citation Summary")
 

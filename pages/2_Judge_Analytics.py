@@ -2,11 +2,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.set_page_config(
-    page_title="Judge Analytics | Legal Analytics Dashboard",
-    layout="wide"
-)
-
 st.title("Judge Analytics")
 
 @st.cache_data
@@ -15,7 +10,7 @@ def load_data():
 
 df = load_data()
 
-col1, col2, col3 = st.columns([2, 1, 1])
+col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
 with col1:
     search_term = st.text_input("Search judges", "", key="judge_search")
@@ -23,25 +18,31 @@ with col1:
 with col2:
     min_year = int(df["year"].min())
     max_year = int(df["year"].max())
-    year_range = st.slider(
-        "Year Range",
-        min_year,
-        max_year,
-        (min_year, max_year),
-        key="judge_year_range"
+    years = list(range(min_year, max_year + 1))
+    selected_years = st.multiselect(
+        "Select Years",
+        years,
+        default=[min_year, max_year],
+        key="judge_years"
     )
 
 with col3:
+    if selected_years:
+        year_range = (min(selected_years), max(selected_years))
+    else:
+        year_range = (min_year, max_year)
+
+with col4:
     sort_by = st.selectbox(
-        "Sort judges by",
+        "Sort by",
         ["Name", "Case Count"],
         key="judge_sort"
     )
 
-filtered_df = df[
-    (df["year"] >= year_range[0]) &
-    (df["year"] <= year_range[1])
-]
+if selected_years:
+    filtered_df = df[df["year"].isin(selected_years)]
+else:
+    filtered_df = df
 
 judge_stats = (
     filtered_df
@@ -114,13 +115,14 @@ cases_per_year = (
     .sort_values("year")
 )
 
-fig, ax = plt.subplots(figsize=(10, 4))
-ax.bar(cases_per_year["year"], cases_per_year["case_count"], alpha=0.7)
-ax.plot(cases_per_year["year"], cases_per_year["case_count"], marker='o', color='red')
-ax.set_xlabel("Year")
-ax.set_ylabel("Number of Cases")
-ax.set_title(f"Cases handled by {selected_judge}")
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.bar(cases_per_year["year"], cases_per_year["case_count"], alpha=0.8, color='skyblue', edgecolor='navy', linewidth=0.5)
+ax.plot(cases_per_year["year"], cases_per_year["case_count"], marker='o', color='red', linewidth=2, markersize=4)
+ax.set_xlabel("Year", fontsize=10)
+ax.set_ylabel("Number of Cases", fontsize=10)
+ax.set_title(f"Cases handled by {selected_judge}", fontsize=12, fontweight='bold')
 ax.grid(True, alpha=0.3)
+ax.tick_params(axis='both', which='major', labelsize=9)
 
 st.pyplot(fig)
 
