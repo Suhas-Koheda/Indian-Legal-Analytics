@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  legal-analytics:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      # Mount data directory for persistent data
+      - ./data:/app/data
+      # Optional: Mount secrets if you want to manage them externally
+      - ./.streamlit:/app/.streamlit
+    environment:
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

@@ -46,8 +46,29 @@ python preprocessing.py
 ```
 
 ### 4. Start the Dashboard
+
+**Option A: Direct run**
 ```bash
 streamlit run app.py
+```
+
+**Option B: Docker (Recommended)**
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Or build and run manually
+docker build -t legal-analytics .
+docker run -p 8501:8501 legal-analytics
+```
+
+**Option C: Docker with environment file**
+```bash
+# Copy environment template
+cp env.example .env
+# Edit .env with your API key
+# Then run
+docker-compose --env-file .env up --build
 ```
 
 ## Data Processing
@@ -70,6 +91,45 @@ The preprocessing pipeline:
 - Supreme Court judgment metadata (1950-2025)
 - Case text and structured legal information
 - Judge and citation analytics
+
+## Docker Deployment
+
+### Quick Start
+```bash
+# Clone repository
+git clone <repository-url>
+cd legal-analytics-dashboard
+
+# Build and run
+docker-compose up --build
+```
+
+### Environment Setup
+```bash
+# Copy environment template
+cp env.example .env
+
+# Edit .env file with your Gemini API key
+GEMINI_API_KEY=your_actual_api_key
+```
+
+### Docker Commands
+```bash
+# Build image
+docker build -t legal-analytics .
+
+# Run container
+docker run -p 8501:8501 -v $(pwd)/data:/app/data legal-analytics
+
+# Use Docker Compose (recommended)
+docker-compose up -d
+docker-compose logs -f
+docker-compose down
+```
+
+### Volume Mounts
+- `./data:/app/data` - Mount data directory for persistence
+- `./.streamlit:/app/.streamlit` - Mount secrets directory
 
 ## Dependencies
 
