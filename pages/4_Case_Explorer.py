@@ -72,14 +72,18 @@ with col2:
     show_details = st.checkbox("Show case details", value=False, key="case_show_details")
 
 st.dataframe(
-    filtered_df[["year", "title", "court", "judge", "citation"]].head(display_count),
+    filtered_df[["year", "title", "court", "judge", "citation", "petitioner", "respondent", "decision_date", "disposal_nature"]].head(display_count),
     use_container_width=True,
     column_config={
         "year": st.column_config.NumberColumn("Year", width="small"),
         "title": st.column_config.TextColumn("Case Title", width="large"),
         "court": st.column_config.TextColumn("Court", width="medium"),
-        "judge": st.column_config.ListColumn("Judges", width="medium"),
-        "citation": st.column_config.ListColumn("Citations", width="medium")
+        "judge": st.column_config.ListColumn("Judges", width="small"),
+        "citation": st.column_config.ListColumn("Citations", width="small"),
+        "petitioner": st.column_config.ListColumn("Petitioners", width="medium"),
+        "respondent": st.column_config.ListColumn("Respondents", width="medium"),
+        "decision_date": st.column_config.TextColumn("Decision Date", width="medium"),
+        "disposal_nature": st.column_config.TextColumn("Disposal Nature", width="medium")
     }
 )
 

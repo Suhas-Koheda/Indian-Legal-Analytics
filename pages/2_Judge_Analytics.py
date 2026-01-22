@@ -131,13 +131,17 @@ st.subheader("Cases Handled by This Judge")
 display_count = len(judge_df) if show_all_cases else 25
 
 st.dataframe(
-    judge_df[["year", "title", "court", "citation"]].head(display_count),
+    judge_df[["year", "title", "court", "citation", "petitioner", "respondent", "decision_date", "disposal_nature"]].head(display_count),
     use_container_width=True,
     column_config={
         "year": st.column_config.NumberColumn("Year", width="small"),
         "title": st.column_config.TextColumn("Case Title", width="large"),
         "court": st.column_config.TextColumn("Court", width="medium"),
-        "citation": st.column_config.ListColumn("Citations", width="medium")
+        "citation": st.column_config.ListColumn("Citations", width="medium"),
+        "petitioner": st.column_config.ListColumn("Petitioners", width="medium"),
+        "respondent": st.column_config.ListColumn("Respondents", width="medium"),
+        "decision_date": st.column_config.TextColumn("Decision Date", width="medium"),
+        "disposal_nature": st.column_config.TextColumn("Disposal Nature", width="medium")
     }
 )
 

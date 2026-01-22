@@ -74,11 +74,14 @@ top_citations = (
     .head(20)
 )
 
-fig, ax = plt.subplots()
-ax.barh(top_citations["citation"], top_citations["case_count"])
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.barh(top_citations["citation"], top_citations["case_count"], alpha=0.8, color='lightgreen', edgecolor='darkgreen', linewidth=0.5)
 ax.invert_yaxis()
-ax.set_xlabel("Number of Cases")
-ax.set_ylabel("Citation")
+ax.set_xlabel("Number of Cases", fontsize=10)
+ax.set_ylabel("Citation", fontsize=10)
+ax.set_title("Most Frequent Citations", fontsize=12, fontweight='bold')
+ax.grid(axis='x', alpha=0.3)
+ax.tick_params(axis='both', which='major', labelsize=9)
 
 st.pyplot(fig)
 
