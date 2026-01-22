@@ -109,7 +109,7 @@ dmypy.json
 .pyre/
 
 # Streamlit
-.streamlit/config.toml
+.streamlit/secrets.toml
 
 # Data files (large parquet files)
 data/*.parquet
