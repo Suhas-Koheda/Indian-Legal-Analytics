@@ -37,20 +37,6 @@ filtered_df = df[
     (df["year"] <= year_range[1])
 ]
 
-def split_citations(citation_value):
-    if pd.isna(citation_value):
-        return []
-
-    if isinstance(citation_value, list):
-        return citation_value
-
-    text = str(citation_value)
-
-    parts = re.split(r",|;", text)
-    return [p.strip() for p in parts if len(p.strip()) > 3]
-
-filtered_df["citation_list"] = filtered_df["citation"].apply(split_citations)
-
 st.subheader("Citation Summary")
 
 c1, c2, c3 = st.columns(3)
@@ -61,7 +47,7 @@ with c1:
 with c2:
     st.metric(
         "Unique Citations",
-        filtered_df.explode("citation_list")["citation_list"].nunique()
+        filtered_df.explode("citation")["citation"].nunique()
     )
 
 with c3:
@@ -74,9 +60,9 @@ st.subheader("Most Frequent Citations")
 
 top_citations = (
     filtered_df
-    .explode("citation_list")
-    .dropna(subset=["citation_list"])
-    .groupby("citation_list")
+    .explode("citation")
+    .dropna(subset=["citation"])
+    .groupby("citation")
     .size()
     .reset_index(name="case_count")
     .sort_values("case_count", ascending=False)
@@ -84,7 +70,7 @@ top_citations = (
 )
 
 fig, ax = plt.subplots()
-ax.barh(top_citations["citation_list"], top_citations["case_count"])
+ax.barh(top_citations["citation"], top_citations["case_count"])
 ax.invert_yaxis()
 ax.set_xlabel("Number of Cases")
 ax.set_ylabel("Citation")
@@ -95,11 +81,11 @@ st.subheader("Citation Trends Over Time")
 
 selected_citation = st.selectbox(
     "Select a Citation",
-    top_citations["citation_list"].tolist()
+    top_citations["citation"].tolist()
 )
 
 citation_df = filtered_df[
-    filtered_df["citation_list"].apply(
+    filtered_df["citation"].apply(
         lambda lst: selected_citation in lst if isinstance(lst, list) else False
     )
 ]

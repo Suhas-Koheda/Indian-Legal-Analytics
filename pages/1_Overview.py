@@ -33,29 +33,6 @@ filtered_df = df[
     (df["year"] <= year_range[1])
 ]
 
-def extract_judges_from_clean(text):
-    if not isinstance(text, str):
-        return []
-
-    match = re.search(
-        r"Coram\s*:\s*(.*?)(?:Decision Date|Case No|\n|$)",
-        text,
-        flags=re.IGNORECASE | re.DOTALL
-    )
-
-    if not match:
-        return []
-
-    names = []
-    for part in re.split(r",| and ", match.group(1)):
-        part = part.strip()
-        if 6 <= len(part) <= 60:
-            names.append(part.title())
-
-    return names
-
-filtered_df["judges"] = filtered_df["clean_text"].apply(extract_judges_from_clean)
-
 st.subheader("Dataset Summary")
 
 c1, c2, c3 = st.columns(3)
@@ -66,7 +43,7 @@ with c1:
 with c2:
     st.metric(
         "Judges Identified",
-        filtered_df.explode("judges")["judges"].nunique()
+        filtered_df.explode("judge")["judge"].nunique()
     )
 
 with c3:
@@ -90,13 +67,13 @@ ax.set_ylabel("Number of Cases")
 
 st.pyplot(fig)
 
-st.subheader("Top Judges (Derived from Text)")
+st.subheader("Top Judges")
 
 top_judges = (
     filtered_df
-    .explode("judges")
-    .dropna(subset=["judges"])
-    .groupby("judges")
+    .explode("judge")
+    .dropna(subset=["judge"])
+    .groupby("judge")
     .size()
     .reset_index(name="case_count")
     .sort_values("case_count", ascending=False)
@@ -104,7 +81,7 @@ top_judges = (
 )
 
 fig, ax = plt.subplots()
-ax.barh(top_judges["judges"], top_judges["case_count"])
+ax.barh(top_judges["judge"], top_judges["case_count"])
 ax.invert_yaxis()
 ax.set_xlabel("Number of Cases")
 

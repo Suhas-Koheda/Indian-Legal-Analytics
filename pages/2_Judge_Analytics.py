@@ -15,53 +15,75 @@ def load_data():
 
 df = load_data()
 
-def normalize_judge_value(val):
-    if isinstance(val, list):
-        return val
+col1, col2, col3 = st.columns([2, 1, 1])
 
-    if val is None or (isinstance(val, float) and pd.isna(val)):
-        return []
+with col1:
+    search_term = st.text_input("Search judges", "", key="judge_search")
 
-    if isinstance(val, str):
-        return [v.strip() for v in val.split(",") if v.strip()]
+with col2:
+    min_year = int(df["year"].min())
+    max_year = int(df["year"].max())
+    year_range = st.slider(
+        "Year Range",
+        min_year,
+        max_year,
+        (min_year, max_year),
+        key="judge_year_range"
+    )
 
-    return []
-
-df["judge"] = df["judge"].apply(normalize_judge_value)
-
-st.sidebar.header("Filters")
-
-min_year = int(df["year"].min())
-max_year = int(df["year"].max())
-
-year_range = st.sidebar.slider(
-    "Select Year Range",
-    min_year,
-    max_year,
-    (min_year, max_year)
-)
+with col3:
+    sort_by = st.selectbox(
+        "Sort judges by",
+        ["Name", "Case Count"],
+        key="judge_sort"
+    )
 
 filtered_df = df[
     (df["year"] >= year_range[0]) &
     (df["year"] <= year_range[1])
 ]
 
-all_judges = (
+judge_stats = (
     filtered_df
-    .explode("judge")["judge"]
-    .dropna()
-    .sort_values()
-    .unique()
+    .explode("judge")
+    .dropna(subset=["judge"])
+    .groupby("judge")
+    .agg({
+        "year": ["count", "nunique", "min", "max"]
+    })
+    .reset_index()
 )
 
-if len(all_judges) == 0:
-    st.warning("No judges found for the selected year range.")
+judge_stats.columns = ["judge", "total_cases", "years_active", "first_year", "last_year"]
+judge_stats["avg_cases_per_year"] = judge_stats["total_cases"] / judge_stats["years_active"]
+
+if search_term:
+    judge_stats = judge_stats[
+        judge_stats["judge"].str.contains(search_term, case=False, na=False)
+    ]
+
+if sort_by == "Case Count":
+    judge_stats = judge_stats.sort_values("total_cases", ascending=False)
+else:
+    judge_stats = judge_stats.sort_values("judge")
+
+if len(judge_stats) == 0:
+    st.warning("No judges found for the selected criteria.")
     st.stop()
 
-selected_judge = st.sidebar.selectbox(
-    "Select Judge",
-    all_judges
-)
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    selected_judge = st.selectbox(
+        "Select Judge",
+        judge_stats["judge"].tolist(),
+        key="judge_select"
+    )
+
+with col2:
+    show_all_cases = st.checkbox("Show all cases", value=False, key="judge_show_all")
+
+judge_data = judge_stats[judge_stats["judge"] == selected_judge].iloc[0]
 
 judge_df = filtered_df[
     filtered_df["judge"].apply(lambda lst: selected_judge in lst)
@@ -69,17 +91,19 @@ judge_df = filtered_df[
 
 st.subheader(f"Justice {selected_judge}")
 
-c1, c2, c3 = st.columns(3)
+c1, c2, c3, c4 = st.columns(4)
 
 with c1:
-    st.metric("Total Cases", len(judge_df))
+    st.metric("Total Cases", int(judge_data["total_cases"]))
 
 with c2:
-    st.metric("Years Active", judge_df["year"].nunique())
+    st.metric("Years Active", int(judge_data["years_active"]))
 
 with c3:
-    avg = len(judge_df) / max(judge_df["year"].nunique(), 1)
-    st.metric("Avg Cases / Year", round(avg, 2))
+    st.metric("Avg Cases/Year", round(judge_data["avg_cases_per_year"], 1))
+
+with c4:
+    st.metric("Career Span", f"{int(judge_data['first_year'])}-{int(judge_data['last_year'])}")
 
 st.subheader("Year-wise Case Load")
 
@@ -90,17 +114,45 @@ cases_per_year = (
     .sort_values("year")
 )
 
-fig, ax = plt.subplots()
-ax.plot(cases_per_year["year"], cases_per_year["case_count"])
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.bar(cases_per_year["year"], cases_per_year["case_count"], alpha=0.7)
+ax.plot(cases_per_year["year"], cases_per_year["case_count"], marker='o', color='red')
 ax.set_xlabel("Year")
 ax.set_ylabel("Number of Cases")
 ax.set_title(f"Cases handled by {selected_judge}")
+ax.grid(True, alpha=0.3)
 
 st.pyplot(fig)
 
-st.subheader("Sample Cases")
+st.subheader("Cases Handled by This Judge")
+
+display_count = len(judge_df) if show_all_cases else 25
 
 st.dataframe(
-    judge_df[["year", "title", "court"]].head(25),
-    use_container_width=True
+    judge_df[["year", "title", "court", "citation"]].head(display_count),
+    use_container_width=True,
+    column_config={
+        "year": st.column_config.NumberColumn("Year", width="small"),
+        "title": st.column_config.TextColumn("Case Title", width="large"),
+        "court": st.column_config.TextColumn("Court", width="medium"),
+        "citation": st.column_config.ListColumn("Citations", width="medium")
+    }
+)
+
+if not show_all_cases and len(judge_df) > 25:
+    st.info(f"Showing first 25 of {len(judge_df)} cases. Check 'Show all cases' to see everything.")
+
+st.subheader("Judge Comparison Table")
+
+st.dataframe(
+    judge_stats.head(20),
+    use_container_width=True,
+    column_config={
+        "judge": st.column_config.TextColumn("Judge Name", width="medium"),
+        "total_cases": st.column_config.NumberColumn("Total Cases", width="small"),
+        "years_active": st.column_config.NumberColumn("Years Active", width="small"),
+        "avg_cases_per_year": st.column_config.NumberColumn("Avg/Year", width="small", format="%.1f"),
+        "first_year": st.column_config.NumberColumn("First Year", width="small"),
+        "last_year": st.column_config.NumberColumn("Last Year", width="small")
+    }
 )
