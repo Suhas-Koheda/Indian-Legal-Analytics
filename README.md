@@ -1,3 +1,14 @@
+---
+title: Indian Legal Analysis Dashboard
+emoji: ⚖️
+colorFrom: blue
+colorTo: purple
+sdk: streamlit
+sdk_version: "1.40.2"
+app_file: app.py
+pinned: false
+---
+
 # Legal Analytics Dashboard
 
 A comprehensive dashboard for analyzing Supreme Court legal cases with advanced analytics and AI-powered insights.
