@@ -2,8 +2,6 @@ import pandas as pd
 
 PARQUET_FILES = {
     "BASE DATASET": "data/base_for_dashboard.parquet",
-    "YEARLY CASES BY JUDGE": "data/yearly_cases_by_judge.parquet",
-    "YEARLY CASES BY LEGAL PROVISION": "data/yearly_cases_by_provision.parquet",
 }
 
 

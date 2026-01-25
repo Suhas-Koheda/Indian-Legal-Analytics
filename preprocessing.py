@@ -51,7 +51,7 @@ def extract_petitioner_respondent(title):
         match = re.search(pattern, title, re.IGNORECASE)
         if match:
             petitioner_part = match.group(1).strip()
-            respondent_part = match.group(-1).strip() if len(match.groups()) == 2 else match.group(2).strip()
+            respondent_part = match.groups()[-1].strip()
 
             petitioner_part = re.sub(r'^[^\w]+|[^\w]+$', '', petitioner_part)
             respondent_part = re.sub(r'^[^\w]+|[^\w]+$', '', respondent_part)
